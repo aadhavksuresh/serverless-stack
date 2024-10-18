@@ -1,6 +1,6 @@
 ---
 title: Working With Your Team
-description: "How to use Serverless Stack (SST) with a team of developers."
+description: "How to use SST with a team of developers."
 ---
 
 When using SST with a team of developers, there are a few different workflows you can choose to keep things organized. We've documented the three most common patterns below. We've also listed the various tradeoffs in security, complexity, and safety.
@@ -11,10 +11,9 @@ In this doc we refer to the concept of an _"AWS Account"_. This is not the indiv
 
 ## AWS SSO
 
-Regardless of the workflow you choose, we strongly recommend setting up [AWS SSO](https://aws.amazon.com/blogs/security/how-to-create-and-manage-users-within-aws-sso/). Historically, you would issue [IAM credentials](https://serverless-stack.com/chapters/create-an-iam-user.html) to each developer on your team. However, these credentials usually had static keys associated with them that are easy to leak.
+Regardless of the workflow you choose, we strongly recommend setting up [AWS SSO](https://aws.amazon.com/blogs/security/how-to-create-and-manage-users-within-aws-sso/). Historically, you would issue [IAM credentials](https://sst.dev/chapters/create-an-iam-user.html) to each developer on your team. However, these credentials usually had static keys associated with them that are easy to leak.
 
 AWS SSO is built on issuing temporary credentials and implements best practices around credential management. It can be used stand-alone or with your existing SSO provider (Okta, Google Workspace, etc).
-
 
 ## Workflows
 
@@ -30,8 +29,8 @@ You also need to create separate IAM accounts for each of your developers.
 
 For local development run.
 
-``` bash
-npx sst start
+```bash
+npx sst dev
 ```
 
 This will prompt you for a local stage name when you first run it and will prefix all the stacks with it. You can [read more about this here](live-lambda-development.md#starting-the-local-environment).
@@ -39,24 +38,24 @@ This will prompt you for a local stage name when you first run it and will prefi
 Typically this corresponds to a developer's name so their stacks will look like: `tom-myapp-stack1`, or `$user_name-$app_name-$stack_name`. This ensures that two developers deploying their local environments will not conflict with each other, since they are using different stage names.
 
 :::note
-SST is designed to give each developer their own isolated development environment. If two people run `sst start` with the same stage name, the person that connected first will get disconnected when the second person connects.
+SST is designed to give each developer their own isolated development environment. If two people run `sst dev` with the same stage name, the person that connected first will get disconnected when the second person connects.
 :::
 
 #### Staging
 
 For deploying to staging, you explicitly pass in the stage name.
 
-``` bash
+```bash
 npx sst deploy --stage staging
 ```
 
-This will deploy stacks that look like this `staging-myapp-stack1`, instead of using the local stage name. 
+This will deploy stacks that look like this `staging-myapp-stack1`, instead of using the local stage name.
 
 #### Production
 
 For deploying to production, similarly you pass in the stage name.
 
-``` bash
+```bash
 npx sst deploy --stage production
 ```
 
@@ -76,21 +75,21 @@ This deploys stacks that look like, `production-myapp-stack`.
 
 A moderately complex setup involves creating a new AWS Account for each environment - typically `dev`, `staging`, and `production`. Spinning up multiple AWS Accounts might seem strange but is actually best practice.
 
-AWS makes this easy to do with [AWS Organizations](https://serverless-stack.com/chapters/manage-aws-accounts-using-aws-organizations.html). You can create a master account associated with an organization and then easily create sub-accounts for each of your environments. Note, AWS SSO should be configured in the master account.
+AWS makes this easy to do with [AWS Organizations](https://sst.dev/chapters/manage-aws-accounts-using-aws-organizations.html). You can create a master account associated with an organization and then easily create sub-accounts for each of your environments. Note, AWS SSO should be configured in the master account.
 
 #### Local Development
 
 For local development you can start SST by specifying the profile associated with the dev environment.
 
 ```
-AWS_PROFILE=dev-profile npx sst start
+AWS_PROFILE=dev-profile npx sst dev
 ```
 
 Just like in the [Single AWS Account](#single-aws-account) setup, this will [prompt you for a local stage name](live-lambda-development.md#starting-the-local-environment) when first run and prefix all your stacks.
 
 Locally you can set this profile as the `default` one in your `~/.aws/credentials`.
 
-``` bash
+```bash
 [default]
 aws_access_key_id = BNMYJSSP5PTLBDBRSWPO
 aws_secret_access_key = 7yuIM8xNf17ue+DDyOcQizDCKaTVhYevKflZONTe
@@ -100,13 +99,13 @@ aws_access_key_id = BNMYJSSP5PTLBDBRSWPO
 aws_secret_access_key = 7yuIM8xNf17ue+DDyOcQizDCKaTVhYevKflZONTe
 ```
 
-Allowing you to run `npx sst start` just as before.
+Allowing you to run `npx sst dev` just as before.
 
 #### Staging
 
 For deploying to staging, you need to pass in the profile associated with staging as well as the stage name.
 
-``` bash
+```bash
 AWS_PROFILE=staging-profile npx sst deploy --stage staging
 ```
 
@@ -116,12 +115,11 @@ This will deploy stacks that look like, `staging-myapp-stack1` into the staging 
 
 For deploying to production, similarly you can pass in the production profile and stage name
 
-``` bash
+```bash
 AWS_PROFILE=production-profile npx sst deploy --stage production
 ```
 
 This deploys stacks that look like, `production-myapp-stack` into the production account.
-
 
 #### Pros
 
@@ -138,19 +136,19 @@ This deploys stacks that look like, `production-myapp-stack` into the production
 
 This is the most complex setup and involves creating a new AWS Account for each environment - typically `dev`, `staging`, and `production`, and also one per developer. The benefits of doing this is that you can make sure developers do not accidentally touch each other's resources. Additionally, you can see billing easily broken down per developer, to ensure that nobody is misusing resources.
 
-AWS makes it easy to spin up multiple environments with [AWS Organizations](https://serverless-stack.com/chapters/manage-aws-accounts-using-aws-organizations.html). You can create a master account associated with an organization and then easily create sub-accounts for each of your environments and developers. Note, AWS SSO should be configured in the master account.
+AWS makes it easy to spin up multiple environments with [AWS Organizations](https://sst.dev/chapters/manage-aws-accounts-using-aws-organizations.html). You can create a master account associated with an organization and then easily create sub-accounts for each of your environments and developers. Note, AWS SSO should be configured in the master account.
 
 #### Local Development
 
 For local development you can start SST by specifying the profile associated with your personal AWS account and specifying a dev stage.
 
-``` bash
-AWS_PROFILE=personal-profile npx sst start --stage dev
+```bash
+AWS_PROFILE=personal-profile npx sst dev --stage dev
 ```
 
 We can take this a step further. Locally you can set this profile as the `default` one in your `~/.aws/credentials`.
 
-``` bash
+```bash
 [default]
 aws_access_key_id = BNMYJSSP5PTLBDBRSWPO
 aws_secret_access_key = 7yuIM8xNf17ue+DDyOcQizDCKaTVhYevKflZONTe
@@ -161,17 +159,17 @@ aws_secret_access_key = 7yuIM8xNf17ue+DDyOcQizDCKaTVhYevKflZONTe
 
 Update the `start` script in your `package.json`.
 
-``` json
+```json
 "scripts": {
   "test": "sst test",
-  "start": "sst start --stage dev",
+  "dev": "sst dev --stage dev",
   "build": "sst build",
   "deploy": "sst deploy",
   "remove": "sst remove"
 },
 ```
 
-Allowing everybody on your team to just run `npm run start`.
+Allowing everybody on your team to just run `npx sst dev`.
 
 Note that, we don't need a unique stage name, since there are no other developers in your account.
 
@@ -179,7 +177,7 @@ Note that, we don't need a unique stage name, since there are no other developer
 
 For deploying to staging, you can pass in the profile associated with staging as well as a stage name.
 
-``` bash
+```bash
 AWS_PROFILE=staging-profile npx sst deploy --stage staging
 ```
 
@@ -189,12 +187,11 @@ This will deploy stacks that look like, `staging-myapp-stack1` into the staging 
 
 For deploying to production, similarly you can pass in the production profile and stage name.
 
-``` bash
+```bash
 AWS_PROFILE=production-profile npx sst deploy --stage production
 ```
 
 This deploys stacks that look like, `production-myapp-stack` into the production account.
-
 
 #### Pros
 

@@ -1,9 +1,12 @@
-import { Link } from "react-router-dom";
-import { Badge, Row, Table } from "~/components";
+import { Row, Table } from "~/components";
 import { Stack } from "~/components/Stack";
 import { useStacks } from "~/data/aws/stacks";
 import { styled } from "~/stitches.config";
-import { H1, H3 } from "../components";
+import { Header, HeaderTitle } from "../components";
+
+const Content = styled("div", {
+  padding: "$lg",
+});
 
 const StackItem = styled("div", {
   padding: "$xl 0",
@@ -24,10 +27,6 @@ const StackName = styled("div", {
 const StackMetric = styled("div", {
   fontSize: "$sm",
   color: "$gray11",
-});
-
-const Root = styled("div", {
-  padding: "$xl",
 });
 
 const Constructs = styled("div", {
@@ -61,22 +60,29 @@ export function Stacks() {
   const stacks = useStacks();
 
   return (
-    <Root>
-      <Stack space="xl">
-        <H1>Stacks</H1>
-        <Stack space="0">
-          {stacks.data!.all.map((s) => (
+    <>
+      <Header>
+        <HeaderTitle>Stacks</HeaderTitle>
+      </Header>
+      <Content>
+        {stacks.data!.all.map((s) => {
+          const outputs = (s.info.Outputs ?? [])
+            .filter((o) => !o.OutputKey?.includes("SstSiteEnv"))
+            .filter((o) => !o.OutputKey?.startsWith("ExportsOutput"))
+            .filter((o) => o.OutputKey !== "SSTMetadata");
+
+          return (
             <StackItem key={s.info.StackName}>
               <Stack space="lg">
                 <Row alignHorizontal="justify" alignVertical="start">
                   <Stack space="sm">
                     <StackName>{s.info.StackName}</StackName>
-                    {!s.info.Outputs?.length && !s.constructs.all.length && (
+                    {!outputs.length && !s.constructs.all.length && (
                       <StackMetric>No exports in this stack</StackMetric>
                     )}
                   </Stack>
                 </Row>
-                {Boolean(s.info.Outputs?.length) && (
+                {Boolean(outputs.length) && (
                   <Table.Root>
                     <Table.Head>
                       <Table.Row>
@@ -85,7 +91,7 @@ export function Stacks() {
                       </Table.Row>
                     </Table.Head>
                     <Table.Body>
-                      {s.info.Outputs?.map((o) => (
+                      {outputs.map((o) => (
                         <Table.Row key={o.OutputKey}>
                           <Table.Cell>{o.OutputKey}</Table.Cell>
                           <Table.Cell>{o.OutputValue}</Table.Cell>
@@ -102,7 +108,7 @@ export function Stacks() {
                         /*
                         const _link = (() => {
                           switch (c.type) {
-                            case "Auth":
+                            case "Cognito":
                               return `../cognito/${c.data.userPoolId}`;
                             case "Function":
                               return `../functions/${c.stack}/${c.addr}`;
@@ -137,9 +143,9 @@ export function Stacks() {
                 )}
               </Stack>
             </StackItem>
-          ))}
-        </Stack>
-      </Stack>
-    </Root>
+          );
+        })}
+      </Content>
+    </>
   );
 }

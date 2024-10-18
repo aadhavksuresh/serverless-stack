@@ -1,25 +1,24 @@
 {
-  "name": "@serverless-stack/api-auth-cognito",
+  "name": "api-auth-cognito",
+  "version": "0.0.0",
   "private": true,
-  "description": "tests",
-  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "add-package": "sst add-package",
-    "start": "sst start",
+    "dev": "sst dev",
     "build": "sst build",
     "deploy": "sst deploy",
     "remove": "sst remove",
-    "cdk": "sst cdk"
+    "console": "sst console",
+    "typecheck": "tsc --noEmit"
   },
-  "eslintConfig": {
-    "extends": [
-      "serverless-stack"
-    ]
+  "devDependencies": {
+    "sst": "^2.40.6",
+    "aws-cdk-lib": "2.124.0",
+    "constructs": "10.3.0",
+    "typescript": "^5.3.3",
+    "@tsconfig/node18": "^18.2.2"
   },
-  "dependencies": {
-    "@serverless-stack/cli": "0.60.8",
-    "@serverless-stack/resources": "0.60.8",
-    "aws-cdk-lib": "2.7.0"
-  },
-  "license": "ISC"
+  "workspaces": [
+    "packages/*"
+  ]
 }

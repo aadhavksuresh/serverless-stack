@@ -226,10 +226,6 @@ function isFileSizeTooLargeToPreview(bytes: number): boolean {
   return bytes > 10000000; // 10 MB
 }
 
-function buildS3Url(bucket: string, key: string): string {
-  return `https://${bucket}.s3.amazonaws.com/${key}`;
-}
-
 export function Detail() {
   const [search, setSearchParams] = useSearchParams();
   const [index, setIndex] = useState(-1);
@@ -243,6 +239,7 @@ export function Detail() {
   const bucketList = useBucketList(bucket.data.name, prefix!);
   const prefetch = useBucketListPrefetch();
   const uploadFile = useUploadFile();
+  const uploadFolder = useUploadFile();
   const deleteFile = useDeleteFile();
   const deleteFolder = useDeleteFile();
   const [scrollRestoration, setScrollRestoration] = useAtom(
@@ -371,7 +368,7 @@ export function Detail() {
           </ToolbarButton>
 
           <ToolbarButton as="label" htmlFor="upload">
-            {uploadFile.isLoading && !isCreating ? (
+            {uploadFile.isLoading ? (
               <ToolbarSpinner size="sm" />
             ) : (
               <AiOutlineUpload size={16} />
@@ -406,7 +403,7 @@ export function Detail() {
       <Explorer ref={explorerRef}>
         {isCreating && (
           <ExplorerRow>
-            {uploadFile.isLoading ? (
+            {uploadFolder.isLoading ? (
               <ExplorerRowSpinner size="sm" />
             ) : (
               <AiOutlineFolderOpen size={16} />
@@ -415,14 +412,14 @@ export function Detail() {
             <ExplorerCreateInput
               autoFocus
               placeholder="New folder name..."
-              disabled={uploadFile.isLoading}
+              disabled={uploadFolder.isLoading}
               onBlur={() => setIsCreating(false)}
               onKeyPress={async (e) => {
                 // @ts-expect-error
                 const value = e.target.value;
                 const key = prefix + value.trim() + "/";
                 if (e.key === "Enter") {
-                  await uploadFile.mutateAsync({
+                  await uploadFolder.mutateAsync({
                     bucket: bucket.data.name,
                     key,
                     prefetch,
@@ -443,7 +440,7 @@ export function Detail() {
           </ExplorerRow>
         )}
         {bucketList.data?.pages.map((page, pageIndex) => (
-          <div data-page={pageIndex}>
+          <div data-page={pageIndex} key={pageIndex}>
             {[
               ...(page.CommonPrefixes?.map((x) => ({
                 type: "dir" as const,
@@ -547,9 +544,7 @@ export function Detail() {
             ) : (
               <BiCopy
                 onClick={() => {
-                  navigator.clipboard.writeText(
-                    buildS3Url(bucket.data.name, selectedFile.data.key)
-                  );
+                  navigator.clipboard.writeText(selectedFile.data.url);
                   setCopied(true);
                   // hide it false after 3 seconds
                   setTimeout(() => setCopied(false), 2000);

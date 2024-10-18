@@ -1,7 +1,7 @@
 import { atom, useAtom } from "jotai";
 import { atomWithStorage, selectAtom } from "jotai/utils";
 import { trpc } from "./trpc";
-import { State } from "../../../core/src/local/router";
+import { State } from "../../../sst/src/cli/local/router";
 import { useMemo } from "react";
 
 const DarkModeAtom = atomWithStorage<boolean>(
@@ -34,4 +34,10 @@ export function useRealtimeState<T>(select: (s: State) => T, deps: any[] = []) {
   const atom = useMemo(() => selectAtom(RealtimeStateAtom, select), deps);
   const [read] = useAtom(atom);
   return read;
+}
+
+export const SSLAtom = atom(false);
+
+export function useSSL() {
+  return useAtom(SSLAtom);
 }

@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { styled } from "~/stitches.config";
 import { Functions } from "./Functions";
 import { Stacks } from "./Stacks";
@@ -13,6 +13,8 @@ import { trpc } from "~/data/trpc";
 import { useEffect, useRef } from "react";
 import { RDS } from "./RDS";
 import { GraphQL } from "./GraphQL";
+import { Dynamo } from "./Dynamo";
+import { Api } from "./Api";
 
 const Root = styled("div", {
   background: "$loContrast",
@@ -21,6 +23,13 @@ const Root = styled("div", {
   position: "fixed",
   inset: 0,
   color: "$hiContrast",
+});
+
+const Announcement = styled("div", {
+  borderBottom: "1px solid $border",
+  padding: "12px 10px 14px",
+  fontSize: 14,
+  textAlign: "center",
 });
 
 const Fill = styled("div", {
@@ -47,6 +56,13 @@ export function Stage() {
     );
   return (
     <Root>
+      <Announcement>
+        Check out the{" "}
+        <a href="https://console.sst.dev" target="_blank">
+          new SST Console
+        </a>
+        . We'll be migrating to it in the coming weeks.{" "}
+      </Announcement>
       <Fill>
         <Panel />
         <Content>
@@ -58,6 +74,9 @@ export function Stage() {
             <Route path="buckets/*" element={<Buckets />} />
             <Route path="rds/*" element={<RDS />} />
             <Route path="graphql/*" element={<GraphQL />} />
+            <Route path="dynamodb/*" element={<Dynamo />} />
+            <Route path="api/*" element={<Api />} />
+            <Route path="*" element={<Navigate to="./local" />} />
           </Routes>
         </Content>
       </Fill>

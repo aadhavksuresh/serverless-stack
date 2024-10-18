@@ -1,6 +1,6 @@
 ---
 title: Extending SST
-description: "Learn how to extend Serverless Stack (SST)'s built-in constructs."
+description: "Learn how to extend SST's built-in constructs."
 ---
 
 SST maintains a family of built-in constructs that makes it easy to build full-stack apps. We'll be adding more constructs like these to the family and it's usually based on the type of requests we get from the community. But it's possible that the resources you need to create are not yet supported by SST. In this case, you can fallback to using the underlying CDK constructs. And in the case an AWS resource is not yet supported by CDK, you can fallback all the way to using CloudFormation.
@@ -13,25 +13,25 @@ All CDK constructs and CloudFormation resources are supported in SST apps.
 
 Here is an example of creating a VPC using the CDK construct, and then using the VPC inside the [`Api`](../constructs/Api.md) construct.
 
-```js {13} title="stacks/MyStack.js"
-import { Vpc } from "@aws-cdk/aws-ec2";
-import { Api } from "@serverless-stack/resources";
+```ts
+import { Vpc } from "aws-cdk-lib/aws-ec2";
+import { Api, StackContext } from "sst/constructs";
 
-class MyStack extends sst.Stack {
-  constructor(scope, id, props) {
-    super(scope, id, props);
+function Stack({ stack }: StackContext) {
+  // Create a VPC using CDK construct
+  const vpc = new Vpc(stack, "VPC");
 
-    // Create a VPC using CDK construct
-    const vpc = new Vpc(this, "VPC");
-
-    // Create an Api using SST construct
-    const api = new Api(this, "Api", {
-      defaultFunctionProps: { vpc },
-      routes: {
-        "GET /": "src/lambda.main",
+  // Create an Api using SST construct
+  const api = new Api(stack, "Api", {
+    defaults: {
+      function: {
+        vpc,
       },
-    });
-  }
+    },
+    routes: {
+      "GET /": "src/lambda.main",
+    },
+  });
 }
 ```
 
@@ -40,7 +40,7 @@ class MyStack extends sst.Stack {
 SST's built-in constructs are high level constructs, that are made up of multiple CDK constructs. As an example, take the [`Api`](../constructs/Api.md) construct configured with a custom domain.
 
 ```js
-new Api(this, "Api", {
+new Api(stack, "Api", {
   customDomain: "api.domain.com",
   routes: {
     "GET /notes": "src/list.main",
@@ -50,8 +50,8 @@ new Api(this, "Api", {
 
 Behind the scenes, the `Api` construct creates a list of CDK constructs. To name a few:
 
-- [`aws-apigatewayv2.HttpApi`](https://docs.aws.amazon.com/cdk/api/latest/docs/@aws-cdk_aws-apigatewayv2.HttpApi.html)
-- [`aws-apigatewayv2.DomainName`](https://docs.aws.amazon.com/cdk/api/v2/docs/@aws-cdk_aws-apigatewayv2-alpha.DomainName.html)
+- [`aws-apigatewayv2.HttpApi`](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2.HttpApi.html)
+- [`aws-apigatewayv2.DomainName`](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_apigatewayv2.DomainName.html)
 - [`aws-certificatemanager.Certificate`](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_certificatemanager.Certificate.html)
 - [`aws-route53.ARecord`](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_route53.ARecord.html)
 - [`aws-lambda.Function`](https://docs.aws.amazon.com/cdk/api/v2/docs/aws-cdk-lib.aws_lambda.Function.html) construct for each route
@@ -71,5 +71,5 @@ Here is an example of creating an S3 bucket using the [`CfnBucket`](https://docs
 ```js
 import { CfnBucket } from "@aws-cdk/aws-s3";
 
-const cfnBucket = new CfnBucket(this, "Bucket");
+const cfnBucket = new CfnBucket(stack, "Bucket");
 ```

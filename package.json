@@ -1,49 +1,34 @@
 {
-  "name": "serverless-stack",
+  "name": "sst",
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
+  "type": "module",
   "workspaces": [
     "packages/*",
-    "packages/cli/test/*",
-    "packages/static-site-env/test/*"
+    "packages/assets/*",
+    "www"
   ],
   "scripts": {
-    "lint": "eslint . --fix --ext .js,.ts",
-    "watch": "tsc -b -w",
-    "prettier": "prettier --write \"**/*.{js,ts,tsx,json,md}\"",
-    "changelog": "lerna-changelog",
-    "release": "lerna publish --force-publish",
-    "release-canary": "lerna publish --canary --exact --preid next --dist-tag=next --force-publish=*",
-    "clean": "lerna run clean",
-    "depcheck": "for I in packages/*/; do cd $I; npx depcheck; cd -; done",
-    "postinstall": "lerna run prepare --scope='{@serverless-stack/core,@serverless-stack/resources,@serverless-stack/cli,create-serverless-stack}'",
-    "test": "lerna run prepare && lerna run test --stream --scope='{@serverless-stack/core,@serverless-stack/resources,@serverless-stack/cli,@serverless-stack/static-site-env}'"
+    "build": "turbo run build --filter=!@sst/docs --filter=!@sst/console --filter=!@sst/cli-*",
+    "prettier": "prettier --cache -w --loglevel=error .",
+    "version": "./.changeset/version",
+    "release": "./.changeset/release",
+    "release-snapshot": "./.changeset/snapshot",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/serverless-stack/serverless-stack.git"
+    "url": "https://github.com/sst/sst.git"
   },
   "devDependencies": {
-    "@babel/eslint-parser": "^7.11.3",
-    "@babel/eslint-plugin": "^7.11.3",
-    "@babel/preset-react": "^7.14.5",
-    "@typescript-eslint/eslint-plugin": "^4.15.1",
-    "@typescript-eslint/parser": "^4.15.1",
-    "depcheck": "^1.3.1",
-    "eslint": "^7.16.0",
-    "eslint-plugin-react": "^7.23.2",
-    "husky": "^4.3.6",
-    "lerna": "^3.22.1",
-    "lerna-changelog": "^1.0.1",
-    "lint-staged": "^10.5.3",
-    "prettier": "^2.2.1",
-    "typescript": "^4.5.3"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
+    "@changesets/changelog-github": "^0.4.8",
+    "@changesets/cli": "^2.26.0",
+    "husky": "^8.0.3",
+    "prettier": "^2.8.4",
+    "turbo": "^1.8.3",
+    "typescript": "^5.2.2",
+    "vitest": "^0.33.0"
   },
   "lint-staged": {
     "*.{js,ts,css,json,md}": [

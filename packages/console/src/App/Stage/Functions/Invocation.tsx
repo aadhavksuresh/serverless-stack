@@ -23,7 +23,7 @@ type Props = {
 
 const InvocationRoot = styled("div", {
   width: "100%",
-  overflow: "auto",
+  overflowY: "hidden",
   position: "relative",
   fontSize: "$sm",
 });
@@ -40,20 +40,27 @@ export const InvocationRow = memo((props: Props) => {
   const ref = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState<number>(0);
 
-  const observer = useRef(
-    new ResizeObserver((entries) => {
-      const { height } = entries[0].contentRect;
-      setHeight(height + 80);
-    })
-  );
+  const observer = useRef<ResizeObserver>();
 
   useEffect(() => {
-    if (ref.current) {
-      observer.current.observe(ref.current);
-    }
+    observer.current = new ResizeObserver((entries) => {
+      window.requestAnimationFrame(() => {
+        const { height } = entries[0].contentRect;
+        setHeight(height + 80);
+      });
+    });
 
     return () => {
-      if (ref.current) observer.current!.unobserve(ref.current);
+      observer.current.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!observer.current) return;
+    if (ref.current) observer.current.observe(ref.current);
+
+    return () => {
+      if (ref.current) observer.current.unobserve(ref.current);
     };
   }, [ref.current]);
 
@@ -213,7 +220,7 @@ type LogsProps = {
 };
 
 const LogsRoot = styled("div", {
-  flexGrow: 1,
+  width: "100%",
 });
 
 function Logs(props: LogsProps) {
@@ -259,13 +266,15 @@ function Logs(props: LogsProps) {
               .substring(0, 12)}
           </LogTimestamp>
           <LogStackTrace>
-            {props.invocation.response.error.stackTrace.length === 0 &&
+            {(props.invocation.response.error.stackTrace || []).length === 0 &&
               props.invocation.response.error.errorMessage}
-            {props.invocation.response.error.stackTrace.map((item, index) => (
-              <div style={{ fontSize: "0.75rem" }} key={index}>
-                {item}
-              </div>
-            ))}
+            {(props.invocation.response.error.stackTrace || []).map(
+              (item, index) => (
+                <div style={{ fontSize: "0.75rem" }} key={index}>
+                  {item}
+                </div>
+              )
+            )}
           </LogStackTrace>
         </LogRow>
       )}

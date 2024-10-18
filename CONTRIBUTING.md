@@ -5,15 +5,15 @@ Want to help improve SST? Thank you! Take a second to review this document befor
 To be sure that you are not working on something that's already being worked on, make sure to either:
 
 - [Open a new issue][issue] about it
-- Or [join us on Slack][slack] and send us a message
+- Or [join us on Discord][discord] and send us a message
 
 ## How to Contribute
 
-In this section we'll talk about the workflow we recommend while working on SST. It's based on how we work internally, but catered specifically for our community contributors. For more context on how we work, you can [check out this document](https://serverless-stack.com/about/culture.html).
+In this section we'll talk about the workflow we recommend while working on SST. It's based on how we work internally, but catered specifically for our community contributors. For more context on how we work, you can [check out this document](https://sst.dev/about/culture.html).
 
 ### 1. Gather Requirements
 
-When assigned an issue, the first step is to get all the details and seek any necessary clarification. If the issue was brought up by a user, make sure you fully understand the requirement from the user. Contact the user on Slack or ask them on GitHub. Or, contact a member from the core team that opened the issue.
+When assigned an issue, the first step is to get all the details and seek any necessary clarification. If the issue was brought up by a user, make sure you fully understand the requirement from the user. Contact the user on Discord or ask them on GitHub. Or, contact a member from the core team that opened the issue.
 
 ### 2. Speccing
 
@@ -25,7 +25,7 @@ Here is an example of a spec in action:
 
 - [ ] Research: How is it currently done in other popular frameworks, ie. Create React App.
 - [ ] Implement: Add an eslint section in the `package.json` to allow users to specify a list of linting packages.
-- [ ] Implement: Update the `create-serverless-stack` template to prefill the `package.json` with SST's default linting package.
+- [ ] Implement: Update the `create-sst` template to prefill the `package.json` with SST's default linting package.
 - [ ] Test: Add a test with SST's default linting package and check the `no-unused-vars` rule is enforced.
 - [ ] Test: Add a test with custom linting packages and check that the `no-unused-vars` rule is not enforced.
 - [ ] Doc: Document the default linting package in "Working Locally" doc.
@@ -33,7 +33,7 @@ Here is an example of a spec in action:
 
 Then, add the spec to the GitHub issue. It's necessary to come up with this list **before** working on the task. This gives the core team a chance to propose changes. And, a good spec is one where it can be handed to anyone on the team. That person is then able to follow through and complete the implementation.
 
-If the solution isn’t obvious or is a bigger design change, get the core team involved. Before the group discussion, come up with a proposed solution. [More on this here](https://serverless-stack.com/about/culture.html#our-design-process).
+If the solution isn’t obvious or is a bigger design change, get the core team involved. Before the group discussion, come up with a proposed solution. [More on this here](https://sst.dev/about/culture.html#our-design-process).
 
 The core team then reviews the spec.
 
@@ -52,52 +52,30 @@ Here's how to run SST locally.
 To run this project locally, clone the repo and initialize the project.
 
 ```bash
-$ git clone https://github.com/serverless-stack/serverless-stack.git
-$ cd serverless-stack
-$ yarn
+$ git clone https://github.com/sst/sst.git
+$ cd sst
+$ pnpm i
 ```
 
-### Resources
+### SST
 
-If you are working on the `packages/resources` part, run the watcher at the root.
+If you are working on SST go to the `packages/sst` folder and run the `dev` script.
 
 ```bash
-$ yarn watch
+$ pnpm dev
 ```
 
-And if you make changes to the stub Lambdas, you'll need to package them.
+This will start a watcher that will rebuild changes you make - ensure there are no type errors before submitting a PR.
+
+If you want to test your changes against a project you are working on you can make use of `pnpm link`
 
 ```bash
-$ cd packages/resources
-$ yarn build
+$ cd ./path/to/project
+$ pnpm link ./path/to/sst/packages/sst/dist
+$ pnpm sst dev
 ```
 
-Finally, after making your changes, run all the tests in the `packages/resources` directory.
-
-```bash
-$ yarn test
-```
-
-Alternatively, you can run the tests for a specific construct.
-
-```bash
-$ yarn test <path_to_the_test_for_the_construct>
-```
-
-### CLI
-
-If you are working on the `packages/cli` just go ahead and make your changes. Then run your tests.
-
-```bash
-$ cd packages/cli
-$ yarn test
-```
-
-Alternatively, you can run a specific test.
-
-```bash
-$ yarn test <path_to_the_test_dir>
-```
+Note that we link to the `./dist` folder since that is where we publish out of.
 
 ### Docs
 
@@ -105,7 +83,8 @@ To run the docs site.
 
 ```bash
 $ cd www
-$ yarn start
+$ pnpm build
+$ pnpm start
 ```
 
 ## Pull Requests
@@ -131,7 +110,7 @@ To cut a release, start by merging the PRs that are going into this release.
 1. Generate changelog
 
    ```bash
-   $ yarn changelog
+   $ pnpm changelog
    ```
 
    You'll need to configure the `GITHUB_AUTH` token locally to be able to run this. [Follow these steps](https://github.com/lerna/lerna-changelog#github-token) and configure the local environment variable.
@@ -141,7 +120,7 @@ To cut a release, start by merging the PRs that are going into this release.
    To publish the release to npm run:
 
    ```bash
-   $ yarn release
+   $ pnpm release
    ```
 
    Pick the version you want (patch/minor/major). This is based on the type of changes in the changelog above.
@@ -151,18 +130,18 @@ To cut a release, start by merging the PRs that are going into this release.
 
    We are not currently updating the major version until our 1.0 release.
 
-   Verify that only the 5 core packages (`core`, `cli`, `resources`, `create-serverless-stack`, `static-site-env`) are getting published.
+   Verify that only the 5 core packages (`core`, `cli`, `resources`, `create-sst`, `static-site-env`) are getting published.
 
    Confirm and publish!
 
 3. Draft a new release
 
-   Copy the changelog that was generated above and [draft a new release](https://github.com/serverless-stack/serverless-stack/releases/new).
+   Copy the changelog that was generated above and [draft a new release](https://github.com/sst/sst/releases/new).
 
    Make necessary edits to the changelog to make it more readable and helpful.
 
-   - For `breaking` changes, add a message at the top clearly documenting the change ([example](https://github.com/serverless-stack/serverless-stack/releases/tag/v0.26.0)).
-   - For major `enhancement` changes, add a code snippet on how to use the feature ([example](https://github.com/serverless-stack/serverless-stack/releases/tag/v0.36.0)).
+   - For `breaking` changes, add a message at the top clearly documenting the change ([example](https://github.com/sst/sst/releases/tag/v0.26.0)).
+   - For major `enhancement` changes, add a code snippet on how to use the feature ([example](https://github.com/sst/sst/releases/tag/v0.36.0)).
 
    Add this snippet at the bottom of the changelog and replace it with the version that's going to be released.
 
@@ -172,7 +151,7 @@ To cut a release, start by merging the PRs that are going into this release.
    Update using:
 
    ```sh
-   $ npm install --save --save-exact @serverless-stack/cli@x.x.x @serverless-stack/resources@x.x.x
+   $ npm install --save --save-exact @sst/cli@x.x.x @sst/resources@x.x.x
    ```
    ````
 
@@ -191,7 +170,7 @@ This is useful if you'd like to test your release before pushing it live.
 Create a canary release by running.
 
 ```bash
-$ yarn release-canary
+$ pnpm release-canary
 ```
 
 ## Deprecation
@@ -235,7 +214,7 @@ Follow the checklist below when deprecating a Construct property or method.
 4. Construct code: Ensure the old property (or method) will continue to work.
 5. Construct code: Print a warning in verbose mode if the old property (or method) is used.
    ```
-   WARNING: The "oldProp" property has been renamed to "newProp". "oldProp" will continue to work but will be removed at a later date. More details on the deprecation - https://docs.serverless-stack.com/constructs/Table#secondaryindexes-deprecated
+   WARNING: The "oldProp" property has been renamed to "newProp". "oldProp" will continue to work but will be removed at a later date. More details on the deprecation - https://docs.sst.dev/constructs/Table#secondaryindexes-deprecated
    ```
 6. Construct tests: Ensure tests added for both the old and the new property (or method).
 
@@ -243,30 +222,7 @@ See the `Table` construct for a deprecation example of renaming `secondaryIndexe
 
 ---
 
-## Writing examples
-
-When submitting examples to the [`examples/`](https://github.com/serverless-stack/serverless-stack/tree/master/examples), ensure:
-
-- [ ] The latest version of SST is used in `package.json`
-- [ ] The name field in `sst.json` and `package.json` match the example folder name
-- [ ] The region field in `sst.json` is `us-east-1`
-- [ ] npm/yarn lock files are removed
-- [ ] Debug messages (ie. console.log) in the code are removed
-- [ ] README has the necessary steps to run the app. For example:
-  - If the app contains a frontend app, instruct users to run `npm install` in `frontend/`
-  - If the app requires adding deployed API endpoint to `.env`, instruct users to create the `.env` file
-- [ ] Add the new example in [`examples/README.md`](https://github.com/serverless-stack/serverless-stack/tree/master/examples/README.md)
-
-If a tutorial is also created on [Serverless-Stack.com](https://serverless-stack.com/examples/index.html), ensure:
-
-- [ ] The code in the tutorial and the example are consistent
-- [ ] The file name of the images in the tutorial are based on the description of the images
-
-It is a good practice to start from scratch and follow the example step by step to ensure the flow is intuitive and there are no gaps between the steps.
-
----
-
 Help us improve this doc. If you've had a chance to contribute to SST, feel free to edit this doc and submit a PR.
 
-[slack]: https://launchpass.com/serverless-stack
-[issue]: https://github.com/serverless-stack/serverless-stack/issues/new
+[discord]: https://sst.dev/discord
+[issue]: https://github.com/sst/sst/issues/new

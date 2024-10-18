@@ -1,22 +1,24 @@
-# How to create a REST API
+# How to use DynamoDB in your serverless app
 
 An example serverless app created with SST.
 
 ## Getting Started
 
-[**Read the tutorial**](https://serverless-stack.com/examples/how-to-create-a-rest-api-with-serverless.html)
+[**Read the tutorial**](https://sst.dev/examples/how-to-use-dynamodb-in-your-serverless-app.html)
 
 Install the example.
 
 ```bash
-$ npm init serverless-stack --example rest-api
+$ npx create-sst@two --template=examples/rest-api-dynamodb
 # Or with Yarn
-$ yarn create serverless-stack --example rest-api
+$ yarn create sst --template=examples/rest-api-dynamodb
+# Or with PNPM
+$ pnpm create sst --template=examples/rest-api-dynamodb
 ```
 
 ## Commands
 
-### `npm run start`
+### `npm run dev`
 
 Starts the Live Lambda Development environment.
 
@@ -32,14 +34,9 @@ Deploy all your stacks to AWS. Or optionally deploy, a specific stack.
 
 Remove all your stacks and all of their resources from AWS. Or optionally removes, a specific stack.
 
-### `npm run test`
-
-Runs your tests using Jest. Takes all the [Jest CLI options](https://jestjs.io/docs/en/cli).
-
 ## Documentation
 
 Learn more about the SST.
 
-- [Docs](https://docs.serverless-stack.com/)
-- [@serverless-stack/cli](https://docs.serverless-stack.com/packages/cli)
-- [@serverless-stack/resources](https://docs.serverless-stack.com/packages/resources)
+- [Docs](https://docs.sst.dev/)
+- [sst](https://docs.sst.dev/packages/sst)

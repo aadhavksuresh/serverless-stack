@@ -1,15 +1,15 @@
 const config = require("./config");
 
 module.exports = {
-  title: "Serverless Stack (SST)",
-  tagline: "Serverless Stack Docs",
-  url: "https://docs.serverless-stack.com",
+  title: "SST v2",
+  tagline: "SST v2 Docs",
+  url: "https://docs.sst.dev",
   baseUrl: "/",
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "warn",
+  onBrokenMarkdownLinks: "throw",
   favicon: "img/favicon.ico",
-  organizationName: "serverless-stack", // Usually your GitHub org/user name.
-  projectName: "serverless-stack", // Usually your repo name.
+  organizationName: "sst", // Usually your GitHub org/user name.
+  projectName: "sst", // Usually your repo name.
   scripts: [
     {
       src: "https://kit.fontawesome.com/18c82fcd4d.js",
@@ -22,44 +22,63 @@ module.exports = {
   themeConfig: {
     prism: {
       additionalLanguages: ["csharp"],
+      theme: require("prism-react-renderer").themes.github,
+      darkTheme: require("prism-react-renderer").themes.dracula,
     },
     // The following are used as defaults but are overriden by
     // the "socialCardsUrl" in the "customFields" below.
     image: "img/og-image.png",
     metaImage: "img/og-image.png",
     announcementBar: {
-      id: "announcement",
-      content: `If you like Serverless Stack, <a target="_blank" href="${config.github}">give it a star on GitHub</a>! <span class="icon" />`,
+      id: "console",
+      content: `Check out SST v3, a new version of SST. <a href="https://sst.dev/">Learn more</a>.`,
       backgroundColor: "#395C6B",
       textColor: "#FFFFFF",
-      isCloseable: true,
+      isCloseable: false,
     },
     navbar: {
       title: "",
       logo: {
         alt: "SST Logo",
+        target: "_self",
         src: "img/logo.svg",
+        href: config.home,
       },
       items: [
         {
-          href: config.guide,
+          to: "/",
+          label: "Docs",
+          position: "left",
+          activeBaseRegex: "^/$",
+        },
+        {
+          to: config.guide,
+          target: "_self",
           label: "Guide",
           position: "left",
         },
         {
-          href: config.home,
-          label: "About",
-          position: "left",
-        },
-        {
           href: config.examples,
+          target: "_self",
           label: "Examples",
           position: "left",
         },
         {
-          href: config.slack_invite,
+          to: "/constructs",
+          label: "Constructs",
+          position: "left",
+          activeBaseRegex: "^/constructs$|^/constructs/(?!v0|v1)",
+        },
+        {
+          to: "/clients",
+          label: "Clients",
+          position: "left",
+          activeBaseRegex: "^/clients",
+        },
+        {
+          href: config.discord,
           position: "right",
-          "aria-label": "Slack community",
+          "aria-label": "Discord community",
           className: "navbar__link__slack",
         },
         {
@@ -77,26 +96,26 @@ module.exports = {
           title: "Docs",
           items: [
             {
-              label: "Installation",
-              to: "installation",
+              label: "Get Started",
+              to: "/",
             },
             {
-              label: "@serverless-stack/cli",
-              to: "packages/cli",
+              label: "What is SST",
+              to: "what-is-sst",
             },
             {
-              label: "Live Lambda Development",
+              label: "Live Lambda Dev",
               to: "live-lambda-development",
+            },
+            {
+              label: "Frequently Asked Questions",
+              to: "faq",
             },
           ],
         },
         {
           title: "Community",
           items: [
-            {
-              label: "Slack",
-              href: config.slack_invite,
-            },
             {
               label: "GitHub",
               href: config.github,
@@ -106,8 +125,12 @@ module.exports = {
               href: config.twitter,
             },
             {
-              label: "Forums",
-              href: config.forum,
+              label: "Discord",
+              href: config.discord,
+            },
+            {
+              label: "YouTube",
+              href: config.youtube,
             },
           ],
         },
@@ -116,11 +139,11 @@ module.exports = {
           items: [
             {
               label: "Blog",
-              href: "https://serverless-stack.com/blog/",
+              href: "https://sst.dev/blog/",
             },
             {
               label: "About us",
-              href: "https://serverless-stack.com/about.html",
+              href: "https://sst.dev/about/",
             },
             {
               label: "Contact us",
@@ -128,7 +151,7 @@ module.exports = {
             },
             {
               label: "Join our team!",
-              href: "https://serverless-stack.com/careers.html",
+              href: "https://sst.dev/careers.html",
             },
           ],
         },
@@ -141,6 +164,13 @@ module.exports = {
       apiKey: "42ee2027a8dbe57a09913af0c27df9ad",
       // Turn on when we have versions
       //contextualSearch: true,
+      // Had to update this in Aloglia's crawler editor to have it picked up
+      // by Algolia - https://crawler.algolia.com
+      exclusionPatterns: [
+        // Exclude the "v0" and "v1" constructs docs from search results
+        "https://docs.sst.dev/constructs/v0/**",
+        "https://docs.sst.dev/constructs/v1/**",
+      ],
     },
   },
   presets: [
@@ -149,18 +179,36 @@ module.exports = {
       {
         docs: {
           routeBasePath: "/",
+          // exclude these pages from user accessing them
+          exclude: [
+            "**.about.md",
+            "**.tsdoc.md",
+            "advanced/monorepo-project-structure.md",
+          ],
           sidebarCollapsible: false,
           sidebarPath: require.resolve("./sidebars.js"),
           showLastUpdateTime: true,
           // Please change this to your repo.
-          editUrl:
-            "https://github.com/serverless-stack/serverless-stack/edit/master/www/",
+          editUrl: (params) => {
+            if (params.docPath.startsWith("constructs")) {
+              const splits = params.docPath.split("/");
+              const name = splits[splits.length - 1].replace(".md", ".ts");
+              return (
+                "https://github.com/sst/sst/blob/master/packages/sst/src/constructs/" +
+                name
+              );
+            }
+            return (
+              "https://github.com/sst/sst/blob/master/www/docs/" +
+              params.docPath
+            );
+          },
         },
         theme: {
           customCss: require.resolve("./src/css/custom.css"),
         },
-        googleAnalytics: {
-          trackingID: "UA-3536629-11",
+        gtag: {
+          trackingID: "G-SCRGH28XB4",
         },
       },
     ],
@@ -171,15 +219,19 @@ module.exports = {
       {
         redirects: [
           {
+            to: "/start/standalone",
+            from: "/quick-start",
+          },
+          {
             to: "/live-lambda-development",
             from: "/working-locally",
           },
           {
-            to: "/constructs/GraphQLApi",
+            to: "/constructs/Api",
             from: "/constructs/ApolloApi",
           },
           {
-            to: "/installation",
+            to: "/",
             from: "/deploying-your-app",
           },
           {
@@ -208,6 +260,6 @@ module.exports = {
   ],
   customFields: {
     // Used in "src/theme/DocItem/index.js" to add og:image tags dynamically
-    socialCardsUrl: "https://social-cards.serverless-stack.com",
+    socialCardsUrl: "https://social-cards.sst.dev",
   },
 };

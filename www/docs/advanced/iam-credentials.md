@@ -1,6 +1,6 @@
 ---
 title: IAM Credentials
-description: "Learn about how Serverless Stack (SST) apps use your IAM credentials."
+description: "Learn about how SST apps use your IAM credentials."
 ---
 
 SST uses your AWS credentials to run the [Live Lambda Development environment](../live-lambda-development.md) and deploy your app. Let's take a look at how to load these credentials, creating an IAM policy for SST, and the basic set of permissions that all CDK apps need.
@@ -11,15 +11,15 @@ There are a few different ways to set the credentials that SST will use. Startin
 
 ### Loading from a file
 
-You can keep you AWS credentials in a file. The credentials are found at:
+You can keep your AWS credentials in a file. The credentials are found at:
 
 - `~/.aws/credentials` on Linux, Unix, and macOS;
 - `C:\Users\USER_NAME\.aws\credentials` on Windows
 
 If the credentials file does not exist on your machine:
 
-1. Follow [this guide to create an IAM user](https://serverless-stack.com/chapters/create-an-iam-user.html)
-2. And then [use this guide to configure the credentials](https://serverless-stack.com/chapters/configure-the-aws-cli.html)
+1. Follow [this guide to create an IAM user](https://sst.dev/chapters/create-an-iam-user.html)
+2. And then [use this guide to configure the credentials](https://sst.dev/chapters/configure-the-aws-cli.html)
 
 The credentials file should look like:
 
@@ -35,11 +35,11 @@ And if you have multiple credentials configured, it might look like:
 [default]
 aws_access_key_id = <DEFAULT_ACCESS_KEY_ID>
 aws_secret_access_key = <DEFAULT_SECRET_ACCESS_KEY>
-    
+
 [staging]
 aws_access_key_id = <STAGING_ACCESS_KEY_ID>
 aws_secret_access_key = <STAGING_SECRET_ACCESS_KEY>
-    
+
 [production]
 aws_access_key_id = <PRODUCTION_ACCESS_KEY_ID>
 aws_secret_access_key = <PRODUCTION_SECRET_ACCESS_KEY>
@@ -47,21 +47,26 @@ aws_secret_access_key = <PRODUCTION_SECRET_ACCESS_KEY>
 
 By default, SST uses the credentials for the `[default]` profile. To use one of the other profiles, set the `AWS_PROFILE` environment variable. For example:
 
-``` bash
-$ AWS_PROFILE=staging npm run deploy
+```bash
+$ AWS_PROFILE=staging npx sst deploy
 ```
 
 ### Loading from environment variables
 
 SST automatically detects AWS credentials in your environment and uses them for making requests to AWS. The environment variables that you need to set are:
+
 - AWS_ACCESS_KEY_ID
 - AWS_SECRET_ACCESS_KEY
+
+If you are using temporary credentials, also set:
+
+- AWS_SESSION_TOKEN
 
 This is often the most convenient way to configure credentials when deploying your SST app in a CI environment. If you are deploying through [Seed](https://seed.run/), [follow this guide to configure IAM credentials](https://seed.run/docs/iam-credentials-per-stage).
 
 ### Configuring AWS Vault
 
-If you are using [AWS Vault](https://github.com/99designs/aws-vault) to store your IAM credentials locally, it needs to be MFA authenticated. Add the `mfa_serial` property in your AWS config file. This will cause AWS Vault to prompt for the MFA token. 
+If you are using [AWS Vault](https://github.com/99designs/aws-vault) to store your IAM credentials locally, it needs to be MFA authenticated. Add the `mfa_serial` property in your AWS config file. This will cause AWS Vault to prompt for the MFA token.
 
 ### Configuring Leapp
 
@@ -77,106 +82,499 @@ Then Leapp will prompt for the MFA token when enabling the session.
 
 ## Creating an IAM policy
 
-There are 4 strategies you can use to decide what IAM permissions you want to grant SST. The decision is primarily based on your use case and your team's security requirement.
+There are 3 strategies you can use to decide what IAM permissions you want to grant SST. The decision is primarily based on your use case and your team's security requirement.
 
 ### 1. Grant `AdministratorAccess` permission
 
-Use this strategy if you are deploying to a development AWS account, and you want to try out SST quickly.
+This strategy is most suited to teams where each member has a personal AWS sandbox account. This arrangement provides developers with a secure environment in which they can experiment and innovate, while simultaneously protecting production environments from unintended disruptions.
 
-### 2. Grant full permission to selected AWS services
+### 2. Generate using IAM Access Analyzer
 
-You can grant permissions to the AWS services you are using. This strategy prevents you from creating, updating, or removing AWS resources outside the scope of your app.
+This strategy involves initially granting a broad permissions policy. After deploying the SST app and allowing it to run for a period of time, IAM Access Analyzer can be used to scrutinize your CloudTrail events and identify the actions and services utilised by the IAM user or role. The analyzer will then generate an IAM policy based on this activity, which can replace the original broad policy.
 
-For example, to create a CRUD API endpoint that uses DynamoDB, the following permissions are required:
+Detailed steps for this process can be found at the following link - https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-policy-generation.html
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "ManageCloudFormationStacks",
-      "Effect": "Allow",
-      "Action": [
-        "cloudformation:*"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "ManageApi",
-      "Effect": "Allow",
-      "Action": [
-        "iam:*",
-        "logs:*",
-        "lambda:*",
-        "dynamodb:*",
-        "apigateway:*"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+### 3. Least privilege policies
 
-If you decide to enable custom domains for the API endpoint, a couple more permissions are required:
+A comprehensive list of IAM permissions can be found in the [IAM permissions](#iam-permissions) section below. Please note that this list is subject to changes over time.
+
+## IAM permissions
+
+For SST to deploy and manage your applications, it requires certain IAM permissions. Below is an IAM policy with the list of required permissions which you can copy and paste directly into your AWS IAM console.
+
+<details>
+<summary>Copy IAM Policy</summary>
 
 ```json
 {
-  "Sid": "ManageCustomDomain",
-    "Effect": "Allow",
-    "Action": [
-      "acm:*",
-      "route53:*",
-      "cloudfront:*"
-    ],
-    "Resource": "*"
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+          "Sid": "AllowCDKManageToolkitStack",
+          "Effect": "Allow",
+          "Action": [
+              "cloudformation:CreateChangeSet",
+              "cloudformation:DeleteChangeSet",
+              "cloudformation:DeleteStack",
+              "cloudformation:DescribeChangeSet",
+              "cloudformation:DescribeStacks",
+              "cloudformation:DescribeStackEvents",
+              "cloudformation:ExecuteChangeSet",
+              "cloudformation:GetTemplate"
+          ],
+          "Resource": [
+              "arn:aws:cloudformation:us-east-1:112233445566:stack/CDKToolkit/*"
+          ]
+      },
+      {
+          "Sid": "AllowCDKManageToolkitRoles",
+          "Effect": "Allow",
+          "Action": [
+              "iam:AttachRolePolicy",
+              "iam:CreateRole",
+              "iam:DeleteRole",
+              "iam:DeleteRolePolicy",
+              "iam:DetachRolePolicy",
+              "iam:GetRole",
+              "iam:GetRolePolicy",
+              "iam:PutRolePolicy",
+              "iam:TagRole",
+              "iam:PassRole"
+          ],
+          "Resource": [
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-cfn-exec-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-file-publishing-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-image-publishing-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-lookup-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-deploy-role-*"
+          ]
+      },
+      {
+          "Sid": "AllowCDKManageToolkitBucket",
+          "Effect": "Allow",
+          "Action": [
+              "s3:CreateBucket",
+              "s3:DeleteBucketPolicy",
+              "s3:GetEncryptionConfiguration",
+              "s3:GetBucketLocation",
+              "s3:GetBucketPolicy",
+              "s3:PutBucketPolicy",
+              "s3:PutBucketVersioning",
+              "s3:PutEncryptionConfiguration",
+              "s3:PutLifecycleConfiguration",
+              "s3:PutBucketPublicAccessBlock"
+          ],
+          "Resource": [
+              "arn:aws:s3:::cdk-hnb659fds-assets-*"
+          ]
+      },
+      {
+          "Sid": "AllowCDKManageToolkitRepository",
+          "Effect": "Allow",
+          "Action": [
+              "ecr:CreateRepository",
+              "ecr:DeleteRepository",
+              "ecr:DescribeRepositories",
+              "ecr:PutLifecyclePolicy",
+              "ecr:SetRepositoryPolicy"
+          ],
+          "Resource": [
+              "arn:aws:ecr:us-east-1:112233445566:repository/cdk-hnb659fds-container-assets-*"
+          ]
+      },
+      {
+          "Sid": "AllowCDKManageToolkitVersionParameter",
+          "Effect": "Allow",
+          "Action": [
+              "ssm:DeleteParameter",
+              "ssm:GetParameters",
+              "ssm:PutParameter"
+          ],
+          "Resource": [
+              "arn:aws:ssm:us-east-1:112233445566:parameter/cdk-bootstrap/hnb659fds/version"
+          ]
+      },
+      {
+          "Sid": "AllowSSTManageBootstrapStack",
+          "Effect": "Allow",
+          "Action": [
+              "cloudformation:DescribeStacks",
+              "cloudformation:DescribeStackEvents"
+          ],
+          "Resource": [
+              "arn:aws:cloudformation:us-east-1:112233445566:stack/SSTBootstrap/*"
+          ]
+      },
+      {
+          "Sid": "AllowSSTAssumeCDKToolkitRoles",
+          "Effect": "Allow",
+          "Action": "sts:AssumeRole",
+          "Resource": [
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-cfn-exec-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-file-publishing-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-image-publishing-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-lookup-role-*",
+              "arn:aws:iam::112233445566:role/cdk-hnb659fds-deploy-role-*"
+          ]
+      },
+      {
+          "Sid": "AllowSSTMonitorStackDeployment",
+          "Effect": "Allow",
+          "Action": [
+              "cloudformation:DeleteStack",
+              "cloudformation:DescribeStacks",
+              "cloudformation:DescribeStackEvents",
+              "cloudformation:DescribeStackResources",
+              "cloudformation:GetTemplate"
+          ],
+          "Resource": [
+              "arn:aws:cloudformation:us-east-1:112233445566:stack/*"
+          ]
+      },
+      {
+          "Sid": "AllowSSTManageBootstrapBucket",
+          "Effect": "Allow",
+          "Action": [
+              "s3:DeleteObject",
+              "s3:GetObject",
+              "s3:ListBucket",
+              "s3:PutObject"
+          ],
+          "Resource": [
+              "arn:aws:s3:::sstbootstrap-*"
+          ]
+      },
+      {
+          "Sid": "AllowSSTCLIManageAppSecrets",
+          "Effect": "Allow",
+          "Action": [
+              "ssm:DeleteParameter",
+              "ssm:GetParameter",
+              "ssm:GetParameters",
+              "ssm:GetParametersByPath",
+              "ssm:PutParameter"
+          ],
+          "Resource": [
+              "arn:aws:ssm:us-east-1:112233445566:parameter/sst/*"
+          ]
+      },
+      {
+          "Sid": "AllowSSTCLIRestartAppFunction",
+          "Effect": "Allow",
+          "Action": [
+              "lambda:GetFunctionConfiguration",
+              "lambda:UpdateFunctionConfiguration"
+          ],
+          "Resource": [
+              "arn:aws:lambda:us-east-1:112233445566:function:*"
+          ],
+          "Condition": {
+              "Null": {
+                  "aws:ResourceTag/sst:app": "false"
+              }
+          }
+      },
+      {
+          "Sid": "AllowSSTLiveLambdaSocketConnection",
+          "Effect": "Allow",
+          "Action": [
+              "iot:DescribeEndpoint",
+              "iot:Connect",
+              "iot:Subscribe",
+              "iot:Publish",
+              "iot:Receive"
+          ],
+          "Resource": [
+              "*"
+          ]
+      },
+      {
+          "Sid": "AllowSSTCLIManageRDSMigrations",
+          "Effect": "Allow",
+          "Action": [
+              "rds-data:ExecuteStatement"
+          ],
+          "Resource": [
+              "arn:aws:rds:us-east-1:112233445566:cluster:*"
+          ],
+          "Condition": {
+              "Null": {
+                  "aws:ResourceTag/sst:app": "false"
+              }
+          }
+      }
+    ]
 }
 ```
 
-### 3. Generate using IAM Access Analyzer
+</details>
 
-The general idea of this strategy is to grant a broad permissions policy for the IAM user or role at first. Use it to deploy the SST app for some time. Then let IAM Access Analyzer analyze your CloudTrail events to identify actions and services that have been used by the IAM user or role. The analyzer will generate an IAM policy that is based on that activity. You can then replace the policy with the generated one.
+Let's break down the permissions list provided above and examine what each is used for.
 
-You can read more about the steps required here - https://docs.aws.amazon.com/IAM/latest/UserGuide/access-analyzer-policy-generation.html
+### 1. Permissions required to bootstrap AWS CDK
 
-### 4. Use CloudFormation service role
+AWS CDK needs to deploy the bootstrap stack once for each AWS account, per region. This happens automatically the first time you execute `sst deploy` or `sst dev`. You can [read more about CDK bootstrap here](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html).
 
-By default, CloudFormation uses a set of temporary IAM credentials generated from your IAM credentials to deploy your stacks. So your IAM credentials need to have all the required permissions that CloudFormation in turn needs.
+Below are the permissions required:
 
-Instead, you can create an IAM role to explicitly specify the actions that CloudFormation can perform, which might not always be the same actions that you or other users can do.
+- Permissions to deploy the CDK bootstrap CloudFormation stack.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "cloudformation:CreateChangeSet",
+          "cloudformation:DeleteChangeSet",
+          "cloudformation:DeleteStack",
+          "cloudformation:DescribeChangeSet",
+          "cloudformation:DescribeStacks",
+          "cloudformation:DescribeStackEvents",
+          "cloudformation:ExecuteChangeSet",
+          "cloudformation:GetTemplate"
+      ],
+      "Resource": [
+          "arn:aws:cloudformation:us-east-1:112233445566:stack/CDKToolkit/*"
+      ]
+  }
+  ```
 
-For example, you might have full `AdministratorAccess` permission, but you can limit CloudFormation access to only a subset of privileges.
+- Permissions to create the CDK bootstrap roles. CDK uses these role to deploy your application to AWS.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "iam:AttachRolePolicy",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:DeleteRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:GetRole",
+          "iam:GetRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:TagRole",
+          "iam:PassRole"
+      ],
+      "Resource": [
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-cfn-exec-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-file-publishing-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-image-publishing-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-lookup-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-deploy-role-*"
+      ]
+  }
+  ```
 
-Alternatively, you might not want everyone on the team to have the permissions to create Lambda functions directly in the AWS console or via AWS CLI, but they can trigger a deployment, and let CloudFormation create Lambda functions as part of the SST app.
+- Permissions to create the CDK bootstrap bucket. CDK uses this bucket to stage S3 assets in your application, such as Lambda function bundles and static assets in your frontend applications. 
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "s3:CreateBucket",
+          "s3:DeleteBucketPolicy",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucketLocation",
+          "s3:GetBucketPolicy",
+          "s3:PutBucketPolicy",
+          "s3:PutBucketVersioning",
+          "s3:PutEncryptionConfiguration",
+          "s3:PutLifecycleConfiguration",
+          "s3:PutBucketPublicAccessBlock"
+      ],
+      "Resource": [
+          "arn:aws:s3:::cdk-hnb659fds-assets-*"
+      ]
+  }
+  ```
 
-Use the [`--role-arn`](packages/cli.md#--role-arn) option to configure the CloudFormation service role that SST will use. [Read more about this option here](packages/cli.md#--role-arn).
+- Permissions to create CDK bootstrap ECR repository. CDK uses this repository to stage Docker images in your application.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "ecr:CreateRepository",
+          "ecr:DeleteRepository",
+          "ecr:DescribeRepositories",
+          "ecr:PutLifecyclePolicy",
+          "ecr:SetRepositoryPolicy"
+      ],
+      "Resource": [
+          "arn:aws:ecr:us-east-1:112233445566:repository/cdk-hnb659fds-container-assets-*"
+      ]
+  }
+  ```
 
-## Additional permissions
+- Permissions to create CDK bootstrap version SSM parameter. The parameter stores the version of the deployed CDK bootstrap stack.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "ssm:DeleteParameter",
+          "ssm:GetParameters",
+          "ssm:PutParameter"
+      ],
+      "Resource": [
+          "arn:aws:ssm:us-east-1:112233445566:parameter/cdk-bootstrap/hnb659fds/version"
+      ]
+  }
+  ```
 
-In addition to the permissions required to deploy your SST app, you also need permissions to deploy the resources in the CDK Bootstrap stack, and the SST Debug stack.
+### 2. Permissions required by AWS CDK to deploy your application
 
-The CDK Bootstrap stack needs to be deployed once per AWS account, per region. It will be automatically deployed the first time you run `sst deploy`. The stack contains the following AWS resources:
+AWS CDK creates a **CloudFormation service IAM role** as part of its bootstrap stack. When SST calls CDK to deploy your application, CloudFormation assumes this role for deployment.
 
-- AWS::IAM::Role
-- AWS::IAM::Policy
-- AWS::KMS::Key
-- AWS::KMS::Alias
-- AWS::S3::Bucket
-- AWS::ECR::Repository
+By default, CloudFormation uses a set of temporary IAM credentials generated from your IAM credentials to deploy your stacks. However, CDK creates an IAM role to explicitly specify the actions that CloudFormation can perform. This is useful when not everyone on the team has the permissions to create Lambda functions directly in the AWS console or via AWS CLI, but they can trigger a deployment, allowing CloudFormation to create Lambda functions as part of the SST app.
 
-You can [read more about CDK Bootstrap here](https://docs.aws.amazon.com/cdk/latest/guide/bootstrapping.html). And you can [find the latest stack template here](https://github.com/aws/aws-cdk/blob/master/packages/aws-cdk/lib/api/bootstrap/bootstrap-template.yaml).
+You can find the permissions allowed for the IAM role in the [latest CDK bootstrap stack template here](https://github.com/aws/aws-cdk/blob/master/packages/aws-cdk/lib/api/bootstrap/bootstrap-template.yaml).
 
-The SST Debug stack is deployed along your SST app when you run `sst start`. The stack contains the following AWS resources:
+You can customize the CDK bootstrap stack to use a custom CloudFormation service role. If you do, use the [`--role`](../packages/sst.md#global-options) option to configure the CloudFormation service role that SST will use. [Read more about this option here](../packages/sst.md#global-options).
 
-- AWS::IAM::Role
-- AWS::IAM::Policy
-- AWS::S3::Bucket
-- AWS::S3::BucketPolicy
-- AWS::DynamoDB::Table
-- AWS::Lambda::Function
-- AWS::Lambda::Permission
-- AWS::ApiGatewayV2::Api
-- AWS::ApiGatewayV2::Stage
-- AWS::ApiGatewayV2::Route
-- AWS::ApiGatewayV2::Integration
+### 3. Permissions required by SST CLI
 
-These resources power the Live Lambda Development environment. You can [read more about it here](../live-lambda-development.md).
+The SST CLI command also makes AWS SDK calls to your AWS account. Here are the IAM permissions required by the CLI:
+
+- Permissions for SST to check if your AWS account has been bootstrapped.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "ssm:GetParameter"
+      ],
+      "Resource": [
+          "arn:aws:ssm:us-east-1:112233445566:parameter/cdk-bootstrap/hnb659fds/version"
+      ]
+  }
+  ```
+
+- Permissions for SST to monitor the bootstrap progress.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "cloudformation:DescribeStacks",
+          "cloudformation:DescribeStackEvents"
+      ],
+      "Resource": [
+          "arn:aws:cloudformation:us-east-1:112233445566:stack/CDKToolkit/*",
+          "arn:aws:cloudformation:us-east-1:112233445566:stack/SSTBootstrap/*"
+      ]
+  }
+  ```
+
+- Permissions for SST to assume CDK roles to deploy your application to AWS.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": [
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-cfn-exec-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-file-publishing-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-image-publishing-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-lookup-role-*",
+          "arn:aws:iam::112233445566:role/cdk-hnb659fds-deploy-role-*"
+      ]
+  }
+  ```
+
+- Permissions for SST to monitor the deployment progress of your application.
+
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "cloudformation:DeleteStack",
+          "cloudformation:DescribeStacks",
+          "cloudformation:DescribeStackEvents",
+          "cloudformation:DescribeStackResources",
+          "cloudformation:GetTemplate"
+      ],
+      "Resource": [
+          "arn:aws:cloudformation:us-east-1:112233445566:stack/*"
+      ]
+  }
+  ```
+
+- Permissions for SST to store [metadata about your application](../advanced/bootstrapping.md#stack-metadata).
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "s3:DeleteObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:PutObject"
+      ],
+      "Resource": [
+          "arn:aws:s3:::sstbootstrap-*"
+      ]
+  }
+  ```
+
+- Permissions for SST to manage your [application secrets](../config.md#secrets).
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "ssm:DeleteParameter",
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath",
+          "ssm:PutParameter"
+      ],
+      "Resource": [
+          "arn:aws:ssm:us-east-1:112233445566:parameter/sst/*"
+      ]
+  }
+  ```
+
+- Permissions for SST to [restart your Lambda functions](../config.md#updating-secrets) after updating secrets.
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "lambda:GetFunctionConfiguration",
+          "lambda:UpdateFunctionConfiguration"
+      ],
+      "Resource": [
+          "arn:aws:lambda:us-east-1:112233445566:function:*"
+      ],
+      "Condition": {
+          "Null": {
+              "aws:ResourceTag/sst:app": "false"
+          }
+      }
+  }
+  ```
+
+- Permissions for SST to connect to IoT endpoint for [Live Lambda development](../live-lambda-development.md).
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "iot:DescribeEndpoint",
+          "iot:Connect",
+          "iot:Subscribe",
+          "iot:Publish",
+          "iot:Receive"
+      ],
+      "Resource": [
+          "*"
+      ]
+  }
+  ```
+
+- If you are using the [`RDS`](../constructs/RDS.md) construct, to let SST Console to [run migrations](../constructs/RDS.md#migrations), you need the following permissions:
+  ```json
+  {
+      "Effect": "Allow",
+      "Action": [
+          "rds-data:ExecuteStatement"
+      ],
+      "Resource": [
+          "arn:aws:rds:us-east-1:112233445566:cluster:*"
+      ],
+      "Condition": {
+          "Null": {
+              "aws:ResourceTag/sst:app": "false"
+          }
+      }
+  }
+  ```

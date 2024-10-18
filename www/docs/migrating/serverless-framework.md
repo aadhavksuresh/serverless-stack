@@ -1,12 +1,20 @@
 ---
 title: Migrating From Serverless Framework
 sidebar_label: Serverless Framework
-description: "Migrating from Serverless Framework to Serverless Stack (SST)"
+description: "Migrate your from Serverless Framework app to SST."
 ---
 
-In this guide we'll look at how to migrate a Serverless Framework app to SST.
+import HeadlineText from "@site/src/components/HeadlineText";
 
-Note that, this document is a work in progress. If you have experience migrating your Serverless Framework app to SST, please consider contributing.
+<HeadlineText>
+
+A guide to migrating your Serverless Framework app to SST.
+
+</HeadlineText>
+
+---
+
+This document is a work in progress. If you have experience migrating your Serverless Framework app to SST, please consider contributing.
 
 ## Incrementally Adopting SST
 
@@ -20,7 +28,7 @@ To make it an easier transition, we'll start by merging your existing Serverless
 
 Your existing app can either have one service or be a monorepo with multiple services.
 
-1. In a temporary location, run `npx create-serverless-stack@latest my-sst-app` or use the `--language typescript` option if your project is in TypeScript.
+1. In a temporary location, run `npm init sst`
 2. Copy the `sst.json` file and the `src/` and `stacks/` directories.
 3. Copy the `scripts`, `dependencies`, and `devDependencies` from the `package.json` file in the new SST project root.
 4. Copy the `.gitignore` file and append it to your existing `.gitignore` file.
@@ -59,14 +67,14 @@ functions:
 You can now create a function in your SST app using the same source.
 
 ```js title="SST"
-new sst.Function(this, "MySnsLambda", {
+new sst.Function(stack, "MySnsLambda", {
   handler: "src/lambda1.main",
 });
 ```
 
 ### Monorepo with multiple Serverless Framework services
 
-If you have a multple Serverless Framework services in the same repo, you can still follow the steps above to create a single SST app. This is because you can define multiple stacks in the same SST app. Where as each Serverless Framework service can only contain a single stack. 
+If you have multiple Serverless Framework services in the same repo, you can still follow the steps above to create a single SST app. This is because you can define multiple stacks in the same SST app. Whereas each Serverless Framework service can only contain a single stack.
 
 After the SST app is created, your directory structure should look something like this.
 
@@ -116,10 +124,12 @@ For example:
 // all the Lambda functions in the new API.
 import { Fn } from "aws-cdk-lib";
 
-new sst.Api(this, "MyApi", {
-  defaultFunctionProps:
-    environment: {
-      myKey: Fn.importValue("exported_key_in_serverless_framework")
+new sst.Api(stack, "MyApi", {
+  defaults:
+    function: {
+      environment: {
+        myKey: Fn.importValue("exported_key_in_serverless_framework")
+      }
     }
   },
   routes: {
@@ -138,11 +148,11 @@ You might also want to reference a newly created resource in SST in Serverless F
 
 ```js title="SST"
 // Export in an SST stack
-import { CfnOutput } from "aws-cdk-lib";
-
-new CfnOutput(this, "TableName", {
-  value: bucket.bucketArn,
-  exportName: "MyBucketArn",
+stack.addOutputs({
+  TableName: {
+    value: bucket.bucketArn,
+    exportName: "MyBucketArn",
+  },
 });
 ```
 
@@ -156,15 +166,27 @@ new CfnOutput(this, "TableName", {
 And finally, to reference stack outputs across stacks in your SST app.
 
 ```js title="StackA.js"
-this.bucket = new s3.Bucket(this, "MyBucket");
+import { StackContext, Bucket } from "sst/constructs";
+
+export function StackA({ stack }: StackContext) {
+  const bucket = new s3.Bucket(stack, "MyBucket");
+
+  return { bucket };
+}
 ```
 
 ```js title="StackB.js"
-// stackA's bucket is passed to stackB
-const { bucket } = this.props;
-// SST will implicitly set the exports in stackA
-// and imports in stackB
-bucket.bucketArn;
+import { StackContext, use } from "sst/constructs";
+import { StackA } from "./StackA";
+
+export function StackB({ stack }: StackContext) {
+  // stackA's return value is passed to stackB
+  const { bucket } = use(StackA);
+
+  // SST will implicitly set the exports in stackA
+  // and imports in stackB
+  bucket.bucketArn;
+}
 ```
 
 ### Reference Serverless Framework resources
@@ -178,15 +200,18 @@ import { Topic } from "aws-cdk-lib/aws-sns";
 
 // Lookup the existing SNS topic
 const snsTopic = Topic.fromTopicArn(
-  this,
+  stack,
   "ImportTopic",
   "arn:aws:sns:us-east-2:444455556666:MyTopic"
 );
 
 // Add 2 new subscribers
-new sst.Topic(this, "MyTopic", {
+new sst.Topic(stack, "MyTopic", {
   snsTopic,
-  subscribers: ["src/subscriber1.main", "src/subscriber2.main"],
+  subscribers: {
+    subscriber1: "src/subscriber1.main",
+    subscriber2: "src/subscriber2.main",
+  },
 });
 ```
 
@@ -226,7 +251,7 @@ And you are ready to migrate the `/users` endpoint but don't want to touch the o
 You can add the route you want to migrate, and set a catch all route to proxy requests the rest to the old API.
 
 ```js
-const api = new sst.Api(this, "Api", {
+const api = new sst.Api(stack, "Api", {
   routes: {
     "GET /users": "src/usersList.main",
     // "$default"   : proxy to old api,
@@ -252,9 +277,14 @@ Optionally, you can now create another new topic in SST called `MyTopic` and fol
 
 #### Migrate only the functions
 
-Now for resources that have persistent data like DynamoDB and S3, it won't be possible to remove them and recreate them. For these cases you can leave them as-is, while migrating over the DynamoDB stream subscribers and S3 bucket event subscribers as a first step.
+Now for resources that have persistent data like DynamoDB and S3, it won't be possible to remove them and recreate them. For these cases you have two choices:
 
-Here's an example for DynamoDB streams. Assume you have a DynamoDB table that is named based on the stage it's deployed to.
+1. Use them as-is by referencing them
+2. Or, migrate them over
+
+We talk about this in detail over on our doc on [Importing resources](../advanced/importing-resources.md).
+
+Here's an example of referencing a resource for DynamoDB streams. Assume you have a DynamoDB table that is named based on the stage it's deployed to.
 
 ```yml title="serverless.yml"
 resources:
@@ -278,18 +308,18 @@ resources:
               StreamViewType: NEW_IMAGE
 ```
 
-Now in SST, you can import the table and create an SST function to subscribe to its streams.
+Now in SST, you can reference the table and create an SST function to subscribe to its streams.
 
 ```js
 // Import table
 const table = dynamodb.fromTableName(
-  this,
+  stack,
   "MyTable",
   `${this.node.root.stage}-MyTable`
 );
 
 // Create a Lambda function
-const processor = new sst.Function(this, "Processor", "processor.main");
+const processor = new sst.Function(stack, "Processor", "processor.main");
 
 // Subscribe function to the streams
 processor.addEventSource(
@@ -299,13 +329,15 @@ processor.addEventSource(
 );
 ```
 
+If you want to completely migrate over a resource, it is a manual process but it'll give you full control. You can [follow these steps](../advanced/importing-resources.md#migrate-resources).
+
 ## Workflow
 
 A lot of the commands that you are used to using in Serverless Framework translate well to SST.
 
 | Serverless Framework      | SST          |
 | ------------------------- | ------------ |
-| `serverless invoke local` | `sst start`  |
+| `serverless invoke local` | `sst dev`    |
 | `serverless package`      | `sst build`  |
 | `serverless deploy`       | `sst deploy` |
 | `serverless remove`       | `sst remove` |
@@ -314,7 +346,7 @@ SST also supports the `IS_LOCAL` environment variable that gets set in your Lamb
 
 ### Invoking locally
 
-With the Serverless Framework you need to run the following command `serverless invoke local -f function_name` to invoke a function locally. 
+With the Serverless Framework you need to run the following command `serverless invoke local -f function_name` to invoke a function locally.
 
 With SST this can be done via PostMan, Hopscotch, curl or any other API client. However, with this event you are actually sending a request to API Gateway which then invokes your Lambda.
 
@@ -377,19 +409,19 @@ Serverless Framework supports a long list of popular plugins. In this section we
 
 To start with, let's look at the very popular [serverless-offline](https://github.com/dherault/serverless-offline) plugin. It's used to emulate a Lambda function locally but it's fairly limited in the workflows it supports. There are also a number of other plugins that work with serverless-offline to support various other Lambda triggers.
 
-Thanks to `sst start`, you don't need to worry about using them anymore.
+Thanks to `sst dev`, you don't need to worry about using them anymore.
 
 | Plugin                                                                                                                    | Alternative |
 | ------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| [serverless-offline](https://github.com/dherault/serverless-offline)                                                      | `sst start` |
-| [serverless-offline-sns](https://github.com/mj1618/serverless-offline-sns)                                                | `sst start` |
-| [serverless-offline-ssm](https://github.com/janders223/serverless-offline-ssm)                                            | `sst start` |
-| [serverless-dynamodb-local](https://github.com/99x/serverless-dynamodb-local)                                             | `sst start` |
-| [serverless-offline-scheduler](https://github.com/ajmath/serverless-offline-scheduler)                                    | `sst start` |
-| [serverless-step-functions-offline](https://github.com/vkkis93/serverless-step-functions-offline)                         | `sst start` |
-| [serverless-offline-direct-lambda](https://github.com/civicteam/serverless-offline-direct-lambda)                         | `sst start` |
-| [CoorpAcademy/serverless-plugins](https://github.com/CoorpAcademy/serverless-plugins)                                     | `sst start` |
-| [serverless-plugin-offline-dynamodb-stream](https://github.com/orchestrated-io/serverless-plugin-offline-dynamodb-stream) | `sst start` |
+| [serverless-offline](https://github.com/dherault/serverless-offline)                                                      | `sst dev`   |
+| [serverless-offline-sns](https://github.com/mj1618/serverless-offline-sns)                                                | `sst dev`   |
+| [serverless-offline-ssm](https://github.com/janders223/serverless-offline-ssm)                                            | `sst dev`   |
+| [serverless-dynamodb-local](https://github.com/99x/serverless-dynamodb-local)                                             | `sst dev`   |
+| [serverless-offline-scheduler](https://github.com/ajmath/serverless-offline-scheduler)                                    | `sst dev`   |
+| [serverless-step-functions-offline](https://github.com/vkkis93/serverless-step-functions-offline)                         | `sst dev`   |
+| [serverless-offline-direct-lambda](https://github.com/civicteam/serverless-offline-direct-lambda)                         | `sst dev`   |
+| [CoorpAcademy/serverless-plugins](https://github.com/CoorpAcademy/serverless-plugins)                                     | `sst dev`   |
+| [serverless-plugin-offline-dynamodb-stream](https://github.com/orchestrated-io/serverless-plugin-offline-dynamodb-stream) | `sst dev`   |
 
 Let's look at the other popular Serverless Framework plugins and how to set them up in SST.
 
@@ -461,7 +493,7 @@ functions:
 ```
 
 ```js title="SST"
-new Api(this, "Api", {
+new Api(stack, "Api", {
   routes: {
     "GET    /users": "listUsers.main",
     "POST   /users": "createUser.main",
@@ -497,7 +529,7 @@ functions:
 ```
 
 ```js title="SST"
-new ApiGatewayV1Api(this, "Api", {
+new ApiGatewayV1Api(stack, "Api", {
   routes: {
     "GET    /users": "listUsers.main",
     "POST   /users": "createUser.main",
@@ -535,7 +567,7 @@ functions:
 ```
 
 ```js title="SST"
-new WebSocketApi(this, "Api", {
+new WebSocketApi(stack, "Api", {
   routes: {
     $connect: "src/connect.main",
     $default: "src/default.main",
@@ -556,7 +588,7 @@ functions:
 ```
 
 ```js title="SST"
-new Cron(this, "Crawl", {
+new Cron(stack, "Crawl", {
   schedule: "rate(2 hours)",
   job: "crawl.main",
 });
@@ -577,8 +609,11 @@ functions:
 ```
 
 ```js title="SST"
-new Topic(this, "Dispatch", {
-  subscribers: ["subscriber.main", "subscriber2.main"],
+new Topic(stack, "Dispatch", {
+  subscribers: {
+    subscriber1: "subscriber.main",
+    subscriber2: "subscriber2.main",
+  },
 });
 ```
 
@@ -604,7 +639,7 @@ resources:
 ```
 
 ```js title="SST"
-new Queue(this, "MyQueue", {
+new Queue(stack, "MyQueue", {
   consumer: "consumer.main",
 });
 ```
@@ -645,14 +680,16 @@ resources:
 ```
 
 ```js title="SST"
-new Table(this, "MyTable", {
+new Table(stack, "MyTable", {
   fields: {
     userId: TableFieldType.STRING,
     noteId: TableFieldType.STRING,
   },
   primaryIndex: { partitionKey: "noteId", sortKey: "userId" },
   stream: true,
-  consumers: ["processor.main"],
+  consumers: {
+    myConsumer: "processor.main",
+  }
 });
 ```
 
@@ -677,18 +714,11 @@ functions:
 ```
 
 ```js title="SST"
-// Create stream
-const stream = new kinesis.Stream(this, "MyStream");
-
-// Create Lambda function
-const processor = new sst.Function(this, "Processor", "processor.main");
-
-// Subscribe function to streams
-processor.addEventSource(
-  new KinesisEventSource(stream, {
-    startingPosition: lambda.StartingPosition.TRIM_HORIZON,
-  })
-);
+new KinesisStream(stack, "MyStream", {
+  consumers: {
+    myConsumer: "processor.main",
+  }
+});
 ```
 
 #### S3
@@ -706,19 +736,15 @@ functions:
 ```
 
 ```js title="SST"
-// Create bucket
-const bucket = new s3.Bucket(this, "MyBucket");
-
-// Create Lambda function
-const processor = new sst.Function(this, "Processor", "processor.main");
-
-// Subscribe function to streams
-processor.addEventSource(
-  new S3EventSource(bucket, {
-    events: [s3.EventType.OBJECT_CREATED],
-    filters: [{ prefix: "uploads/" }],
-  })
-);
+new Bucket(stack, "MyBucket", {
+  notifications: {
+    myNotification: {
+      function: "notification.main",
+      events: ["object_created"],
+      filters: [{ prefix: "uploads/" }],
+    }
+  }
+});
 ```
 
 #### CloudWatch Events
@@ -740,8 +766,8 @@ functions:
 ```
 
 ```js title="SST"
-const processor = new sst.Function(this, "Processor", "processor.main");
-const rule = new events.Rule(this, "Rule", {
+const processor = new sst.Function(stack, "Processor", "processor.main");
+const rule = new events.Rule(stack, "Rule", {
   eventPattern: {
     source: ["aws.ec2"],
     detailType: ["EC2 Instance State-change Notification"],
@@ -763,8 +789,8 @@ functions:
 ```
 
 ```js title="SST"
-const processor = new sst.Function(this, "Processor", "processor.main");
-new SubscriptionFilter(this, "Subscription", {
+const processor = new sst.Function(stack, "Processor", "processor.main");
+new SubscriptionFilter(stack, "Subscription", {
   logGroup,
   destination: new LogsDestinations.LambdaDestination(processor),
   filterPattern: FilterPattern.booleanValue("$.error", true),
@@ -796,9 +822,9 @@ resources:
 ```
 
 ```js title="SST"
-const processor = new sst.Function(this, "Processor", "processor.main");
-const rule = new events.Rule(this, "MyEventRule", {
-  eventBus: new events.EventBus(this, "MyEventBus"),
+const processor = new sst.Function(stack, "Processor", "processor.main");
+const rule = new events.Rule(stack, "MyEventRule", {
+  eventBus: new events.EventBus(stack, "MyEventBus"),
   eventPattern: {
     source: ["acme.transactions.xyz"],
   },
@@ -825,8 +851,8 @@ functions:
 ```
 
 ```js title="SST"
-const processor = new sst.Function(this, "Processor", "processor.main");
-const rule = new events.Rule(this, "rule", {
+const processor = new sst.Function(stack, "Processor", "processor.main");
+const rule = new events.Rule(stack, "rule", {
   eventPattern: {
     source: ["aws.cloudformation"],
     detailType: ["AWS API Call via CloudTrail"],
@@ -852,11 +878,9 @@ functions:
 ```
 
 ```js title="SST"
-new sst.Auth(this, "Auth", {
-  cognito: {
-    triggers: {
-      preSignUp: "src/preSignUp.main",
-    },
+new Cognito(stack, "Auth", {
+  triggers: {
+    preSignUp: "src/preSignUp.main",
   },
 });
 ```
@@ -883,7 +907,7 @@ function:
 ```
 
 ```js title="SST"
-new Api(this, "Api", {
+new Api(stack, "Api", {
   customDomain: "api.domain.com",
   routes: {
     "GET /users": "src/listUsers.main",
@@ -907,7 +931,7 @@ resources:
 ```
 
 ```js title="SST"
-new s3.Bucket(this, "S3Bucket", {
+new s3.Bucket(stack, "S3Bucket", {
   bucketName: `photos-${stack.account}`
 };
 ```
@@ -949,24 +973,22 @@ States:
 ```
 
 ```js title="SST"
-import * as cdk from "aws-cdk-lib";
-
 // Define each state
-const sWait = new sfn.Wait(this, "Wait", {
+const sWait = new sfn.Wait(stack, "Wait", {
   time: sfn.WaitTime.duration(cdk.Duration.seconds(300)),
 });
-const sHello = new tasks.LambdaInvoke(this, "Hello", {
-  lambdaFunction: new sst.Function(this, "Hello", "hello.main"),
+const sHello = new tasks.LambdaInvoke(stack, "Hello", {
+  lambdaFunction: new sst.Function(stack, "Hello", "hello.main"),
 });
-const sFailed = new sfn.Fail(this, "Failed");
-const sSuccess = new sfn.Succeed(this, "Success");
+const sFailed = new sfn.Fail(stack, "Failed");
+const sSuccess = new sfn.Succeed(stack, "Success");
 
 // Define state machine
-new sfn.StateMachine(this, "StateMachine", {
+new sfn.StateMachine(stack, "StateMachine", {
   definition: sWait
     .next(sHello)
     .next(
-      new sfn.Choice(this, "Job Approved?")
+      new sfn.Choice(stack, "Job Approved?")
         .when(sfn.Condition.stringEquals("$.status", "Approved"), sSuccess)
         .otherwise(sFailed)
     ),
@@ -999,7 +1021,7 @@ const topic = new sns.Topic(stack, "AlarmTopic");
 topic.addSubscription(new subscriptions.EmailSubscription("foo@bar.com"));
 
 // Post a message to topic when an alarm breaches
-new cloudwatch.Alarm(this, "Alarm", {
+new cloudwatch.Alarm(stack, "Alarm", {
   metric: lambda.metricAllErrors(),
   threshold: 100,
   evaluationPeriods: 2,

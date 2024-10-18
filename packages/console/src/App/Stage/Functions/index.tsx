@@ -10,6 +10,13 @@ import { MdErrorOutline } from "react-icons/md";
 import { theme } from "~/stitches.config";
 import { useEffect, useRef } from "react";
 
+const Root = styled("div", {
+  display: "flex",
+  height: "100%",
+  width: "100%",
+  overflow: "hidden",
+});
+
 const FunctionList = styled("div", {
   height: "100%",
   width: "300px",
@@ -67,7 +74,7 @@ export function Functions() {
   }, [params]);
 
   return (
-    <Row style={{ height: "100%" }}>
+    <Root>
       <FunctionList ref={root}>
         <Scroll.Area>
           <Scroll.ViewPort>
@@ -102,7 +109,7 @@ export function Functions() {
           )}
         </Routes>
       </Content>
-    </Row>
+    </Root>
   );
 }
 
@@ -112,12 +119,28 @@ function StackItem(props: { stack: StackInfo }) {
   const children = stack.constructs.all.flatMap((c) => {
     // TODO: This code is going to scale poorly
     switch (c.type) {
+      case "Cognito":
+        if (c.data.triggers.length === 0) return [];
+        return c.data.triggers.map((t) => (
+          <Function
+            key={c.addr + t.fn!.node}
+            to={`${t.fn!.stack}/${t.fn!.node}`}
+          >
+            <Stack space="sm">
+              <FunctionName>{c.id}</FunctionName>
+              <FunctionVia>{t.name}</FunctionVia>
+            </Stack>
+            <FunctionIcons stack={t.fn!.stack} addr={t.fn!.node} />
+          </Function>
+        ));
       case "Topic":
-        return c.data.subscribers.map((fn, index) => (
+        return c.data.subscribers.filter(fn => fn).map((fn, index) => (
           <Function key={c.addr + fn.node} to={`${fn.stack}/${fn.node}`}>
             <Stack space="sm">
               <FunctionName>{c.id}</FunctionName>
-              <FunctionVia>Subscriber #{index}</FunctionVia>
+              <FunctionVia>
+                Subscriber {c.data.subscriberNames?.[index] || "#" + index}
+              </FunctionVia>
             </Stack>
             <FunctionIcons stack={fn.stack} addr={fn.node} />
           </Function>
@@ -127,7 +150,10 @@ function StackItem(props: { stack: StackInfo }) {
           <Function key={c.addr + n!.node} to={`${n!.stack}/${n!.node}`}>
             <Stack space="sm">
               <FunctionName>{c.id}</FunctionName>
-              <FunctionVia>Bucket Notification #{index}</FunctionVia>
+              <FunctionVia>
+                Bucket Notifications{" "}
+                {c.data.notificationNames?.[index] || "#" + index}
+              </FunctionVia>
             </Stack>
             <FunctionIcons stack={n!.stack} addr={n!.node} />
           </Function>
@@ -139,6 +165,9 @@ function StackItem(props: { stack: StackInfo }) {
               <Stack space="sm">
                 <FunctionName>{r.key}</FunctionName>
                 <FunctionVia>Event Target #{index}</FunctionVia>
+                <FunctionVia>
+                  Event Target {r.targetNames?.[index] || "#" + index}
+                </FunctionVia>
               </Stack>
               <FunctionIcons stack={t!.stack} addr={t!.node} />
             </Function>
@@ -204,6 +233,21 @@ function StackItem(props: { stack: StackInfo }) {
             />
           </Function>
         );
+      case "Table":
+      case "KinesisStream":
+        if (c.data.consumers.length === 0) return [];
+        return c.data.consumers.map((t) => (
+          <Function
+            key={c.addr + t.fn!.node}
+            to={`${t.fn!.stack}/${t.fn!.node}`}
+          >
+            <Stack space="sm">
+              <FunctionName>{c.id}</FunctionName>
+              <FunctionVia>{t.name}</FunctionVia>
+            </Stack>
+            <FunctionIcons stack={t.fn!.stack} addr={t.fn!.node} />
+          </Function>
+        ));
       case "Function":
         if (integrations[c.addr]?.length) return [];
         return (
@@ -232,6 +276,7 @@ function StackItem(props: { stack: StackInfo }) {
 
 function FunctionIcons(props: { stack: string; addr: string }) {
   const construct = useConstruct("Function", props.stack, props.addr);
+  if (!construct) return <span />;
   const current = useRealtimeState((s) => s.functions[construct.data.localId]);
   if (!current) return <span />;
   return (

@@ -1,26 +1,27 @@
 {
   "name": "graphql-apollo",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "test": "sst test",
-    "start": "sst start",
+    "dev": "sst dev",
     "build": "sst build",
     "deploy": "sst deploy",
-    "remove": "sst remove"
-  },
-  "eslintConfig": {
-    "extends": [
-      "serverless-stack"
-    ]
+    "remove": "sst remove",
+    "console": "sst console",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.70"
+    "sst": "^2.40.6",
+    "aws-cdk-lib": "2.124.0",
+    "constructs": "10.3.0",
+    "typescript": "^5.3.3",
+    "@tsconfig/node18": "^18.2.2"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "dependencies": {
-    "@serverless-stack/cli": "0.65.1",
-    "@serverless-stack/resources": "0.65.1",
-    "aws-cdk-lib": "2.7.0",
-    "apollo-server-lambda": "^2.21.1"
+    "apollo-server-lambda": "^3.13.0"
   }
 }
